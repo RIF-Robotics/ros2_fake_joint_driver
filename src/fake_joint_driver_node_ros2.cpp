@@ -17,9 +17,9 @@ int main(int argc, char** argv)
     rclcpp::init(argc, argv);
     const rclcpp::Logger logger=rclcpp::get_logger("fake_driver_main");
     auto my_arm = std::make_shared<fake_arm>();
-     
 
-    if (my_arm->init()!=hardware_interface::HW_RET_OK)
+
+    if (my_arm->init()!=hardware_interface::return_type::OK)
     {
         RCLCPP_ERROR(logger, "failed to initialize hardware!\n");
         return -1;
@@ -35,29 +35,29 @@ int main(int argc, char** argv)
         "joint_state_controller/JointStateController"
     );
 
-    
+
     controller_interface::ControllerInterfaceSharedPtr traj_controller = ctlmgr.load_controller(
         "fake_joint_trajectory_controller",
         "joint_trajectory_controller/JointTrajectoryController"
     );
-    
+
     auto future_handle = std::async(std::launch::async, spin, executor);
 
-    if (ctlmgr.configure() != controller_interface::CONTROLLER_INTERFACE_RET_SUCCESS)
+    if (ctlmgr.configure() != controller_interface::return_type::SUCCESS)
     {
         RCLCPP_ERROR(logger, "at least one controller failed to configure");
         executor->cancel();
         return -1;
     }
-    //RCLCPP_INFO(logger, "Controller Manager config done!");
+    RCLCPP_INFO(logger, "Controller Manager config done!");
 
-    if (ctlmgr.activate() != controller_interface::CONTROLLER_INTERFACE_RET_SUCCESS)
+    if (ctlmgr.activate() != controller_interface::return_type::SUCCESS)
     {
         RCLCPP_ERROR(logger, "at least one controller NOT activated!\n");
         executor->cancel();
         return -1;
     }
-    //RCLCPP_INFO(logger, "Controller Manager Activated.");
+    RCLCPP_INFO(logger, "Controller Manager Activated.");
 
     hardware_interface::hardware_interface_ret_t ret;
 
@@ -66,8 +66,8 @@ int main(int argc, char** argv)
     RCLCPP_INFO(logger, "Updating in %.2f Hz", rate_val);
 
     uint8_t current_state=traj_controller->get_lifecycle_node()->get_current_state().id();
-    
-    //while (rclcpp::ok()) 
+
+    //while (rclcpp::ok())
     while (current_state==lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE)
     {
     /*    if (current_state!=lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE)
@@ -106,19 +106,19 @@ int main(int argc, char** argv)
         }
         */
         ret=my_arm->read();
-        if (ret != hardware_interface::HW_RET_OK){
+        if (ret != hardware_interface::return_type::OK){
             RCLCPP_ERROR(logger, "read operation failed!");
         }
         ctlmgr.update();
         ret=my_arm->write();
-        if (ret!=hardware_interface::HW_RET_OK){
+        if (ret!=hardware_interface::return_type::OK){
             RCLCPP_ERROR(logger, "write operation failed!");
         }
         rate.sleep();
     }
 
     executor->cancel();
-    
+
 
 
     rclcpp::shutdown();
